@@ -351,7 +351,7 @@ const App: React.FC = () => {
   const [isLegendMinimized, setIsLegendMinimized] = useState(false);
   const [isTechModalOpen, setIsTechModalOpen] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [viewMode, setViewMode] = useState<'week' | 'month' | 'year'>('week');
+  const [viewMode, setViewMode] = useState<'week' | 'month' | 'year'>('month');
   const [copySuccess, setCopySuccess] = useState(false);
 
   const isManager = user?.role === UserRole.MANAGER;
@@ -359,7 +359,13 @@ const App: React.FC = () => {
   const handleShare = () => {
     // Dynamically determine the share URL. 
     // If we are in the dev environment, we want to point to the pre (preview) environment.
-    let shareUrl = window.location.origin;
+    let shareUrl = window.location.origin + window.location.pathname;
+    
+    // Remove trailing slash if present for cleaner URL
+    if (shareUrl.endsWith('/')) {
+      shareUrl = shareUrl.slice(0, -1);
+    }
+
     if (shareUrl.includes('-dev-')) {
       shareUrl = shareUrl.replace('-dev-', '-pre-');
     }
@@ -368,15 +374,6 @@ const App: React.FC = () => {
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
   };
-
-  useEffect(() => {
-    // Default to week view on mobile, month view on tablet/desktop
-    if (window.innerWidth < 768) {
-      setViewMode('week');
-    } else {
-      setViewMode('month');
-    }
-  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -710,30 +707,17 @@ const App: React.FC = () => {
 
           <div className="flex items-center gap-3 flex-1 justify-center px-4">
             {isManager && (
-              <form onSubmit={handleAiSubmit} className="flex-1 max-w-[180px] relative group">
+              <form onSubmit={handleAiSubmit} className="flex-1 max-w-[500px] relative group">
                 <SparklesIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isProcessingAi ? 'text-indigo-500 animate-pulse' : 'text-slate-400'}`} />
                 <input 
                   type="text"
-                  placeholder="AI Assign..."
+                  placeholder="AI Assign (e.g. 'Assign Jerry WRK for next week')..."
                   className="w-full bg-slate-100 border-none rounded-xl pl-10 pr-4 py-2 text-xs focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
                   value={aiInput}
                   onChange={(e) => setAiInput(e.target.value)}
                 />
               </form>
             )}
-            
-            <button 
-              onClick={handleShare}
-              className={`
-                px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-sm border
-                ${copySuccess 
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
-                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}
-              `}
-            >
-              <ShareIcon className={`w-3.5 h-3.5 ${copySuccess ? 'text-emerald-500' : 'text-slate-400'}`} />
-              {copySuccess ? 'Link Copied!' : 'Share Calendar'}
-            </button>
             
             <div className="flex gap-2">
               {isManager && (
@@ -763,6 +747,18 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
+            <button 
+              onClick={handleShare}
+              className={`
+                px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-sm border
+                ${copySuccess 
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}
+              `}
+            >
+              <ShareIcon className={`w-3.5 h-3.5 ${copySuccess ? 'text-emerald-500' : 'text-slate-400'}`} />
+              {copySuccess ? 'Link Copied!' : 'Share'}
+            </button>
             <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
               <div className="flex flex-col items-end">
                 {user ? (
