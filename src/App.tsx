@@ -21,8 +21,7 @@ import {
 } from 'date-fns';
 import { Shift, ShiftCode, Technician, UserProfile, UserRole } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
-import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon, CalendarIcon, ShareIcon } from './components/Icons';
-import { parseShiftFromText } from './services/geminiService';
+import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ShareIcon } from './components/Icons';
 import TechManagerModal from './components/TechManagerModal';
 import { 
   auth, 
@@ -343,8 +342,6 @@ const App: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date()); 
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [aiInput, setAiInput] = useState('');
-  const [isProcessingAi, setIsProcessingAi] = useState(false);
   
   const [activeTool, setActiveTool] = useState<ShiftCode | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -612,22 +609,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAiSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiInput.trim() || isProcessingAi) return;
-    setIsProcessingAi(true);
-    const techNames = technicians.map(t => t.name);
-    const result = await parseShiftFromText(aiInput, techNames, format(currentDate, 'yyyy-MM-dd'));
-    if (result) {
-      const tech = technicians.find(t => t.name.toLowerCase().includes(result.technicianName.toLowerCase()));
-      if (tech) {
-        applyShift(tech.id, result.date, result.shiftCode);
-        setAiInput('');
-      }
-    }
-    setIsProcessingAi(false);
-  };
-
   const getShift = (techId: string, date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     return shifts.find(s => s.techId === techId && s.date === dateStr);
@@ -706,19 +687,6 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 flex-1 justify-center px-4">
-            {isManager && (
-              <form onSubmit={handleAiSubmit} className="flex-1 max-w-[500px] relative group">
-                <SparklesIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isProcessingAi ? 'text-indigo-500 animate-pulse' : 'text-slate-400'}`} />
-                <input 
-                  type="text"
-                  placeholder="AI Assign (e.g. 'Assign Jerry WRK for next week')..."
-                  className="w-full bg-slate-100 border-none rounded-xl pl-10 pr-4 py-2 text-xs focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
-                  value={aiInput}
-                  onChange={(e) => setAiInput(e.target.value)}
-                />
-              </form>
-            )}
-            
             <div className="flex gap-2">
               {isManager && (
                 <>
