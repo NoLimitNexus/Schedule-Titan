@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user role and basic info",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["manager", "viewer"] },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Technician": {
+      "title": "Technician",
+      "description": "Technician details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "code": { "type": "string" }
+      },
+      "required": ["id", "name", "code"]
+    },
+    "Shift": {
+      "title": "Shift",
+      "description": "A scheduled shift for a technician",
+      "type": "object",
+      "properties": {
+        "techId": { "type": "string" },
+        "date": { "type": "string" },
+        "code": { "type": "string" }
+      },
+      "required": ["techId", "date", "code"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "User profiles with roles"
+    },
+    "/technicians/{techId}": {
+      "schema": "Technician",
+      "description": "Global list of technicians"
+    },
+    "/shifts/{shiftId}": {
+      "schema": "Shift",
+      "description": "All shifts. shiftId is usually techId_date"
+    }
+  }
+}

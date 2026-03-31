@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, format: email)
+    //   - role: string (required, enum: ['manager', 'viewer'])
+    //   - displayName: string (optional)
+    //   - photoURL: string (optional)
+    //
+    // Collection: technicians
+    // Document ID: {techId}
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - code: string (required)
+    //
+    // Collection: shifts
+    // Document ID: {shiftId} (usually techId_date)
+    // Fields:
+    //   - techId: string (required)
+    //   - date: string (required, format: YYYY-MM-DD)
+    //   - code: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager' ||
+          (request.auth.token.email == "saintk188@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'role', 'displayName', 'photoURL']) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() < 128 &&
+             data.email is string && isValidEmail(data.email) && data.email.size() < 256 &&
+             data.role in ['manager', 'viewer'] &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 128)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() < 2048));
+    }
+
+    function isValidTechnician(data) {
+      return hasOnlyAllowedFields(['id', 'name', 'code']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 128 &&
+             data.code is string && data.code.size() > 0 && data.code.size() < 32;
+    }
+
+    function isValidShift(data) {
+      return hasOnlyAllowedFields(['techId', 'date', 'code']) &&
+             data.techId is string && data.techId.size() > 0 && data.techId.size() < 128 &&
+             isValidDateString(data.date) &&
+             data.code is string && data.code.size() > 0 && data.code.size() < 32;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isAuthenticated() && isOwner(uid);
+      // Only allow users to create their own profile as 'viewer' unless they are the default admin
+      allow create: if isAuthenticated() && isOwner(uid) && isValidUser(request.resource.data) &&
+                    request.resource.data.uid == request.auth.uid &&
+                    (request.resource.data.role == 'viewer' || request.auth.token.email == "saintk188@gmail.com");
+      // Only admins can update roles, users can update their own profile but not the role
+      allow update: if isAuthenticated() && isOwner(uid) && isValidUser(request.resource.data) &&
+                    request.resource.data.uid == resource.data.uid &&
+                    (isAdmin() || request.resource.data.role == resource.data.role);
+    }
+
+    match /technicians/{techId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidTechnician(request.resource.data);
+    }
+
+    match /shifts/{shiftId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidShift(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}
