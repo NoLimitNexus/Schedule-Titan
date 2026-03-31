@@ -99,7 +99,7 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{uid} {
-      allow read: if isAuthenticated() && isOwner(uid);
+      allow read: if isAuthenticated() && (isOwner(uid) || isAdmin());
       // Only allow users to create their own profile as 'viewer' unless they are the default admin
       allow create: if isAuthenticated() && isOwner(uid) && isValidUser(request.resource.data) &&
                     request.resource.data.uid == request.auth.uid &&
